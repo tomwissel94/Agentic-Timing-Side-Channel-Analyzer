@@ -11,25 +11,15 @@ REPORT_PATH = os.path.join(RESULTS_DIR, "security_report.md")
 
 
 def agent_log(step_number: int, message: str):
-    """
-    Prints a clearly labeled agent workflow step.
-    """
     print(f"\n[Agent Step {step_number}] {message}")
 
 
 def read_source_file(filename: str) -> str:
-    """
-    Reads a source file so the agent can inspect it.
-    """
     with open(filename, "r") as file:
         return file.read()
 
 
 def inspect_code_for_timing_leak(source_code: str):
-    """
-    Performs a simple source-code inspection for patterns commonly associated
-    with timing side channels.
-    """
     findings = []
 
     if "return False" in source_code:
@@ -60,23 +50,15 @@ def inspect_code_for_timing_leak(source_code: str):
 
 
 def summarize_results(results):
-    """
-    Converts timing results into Markdown bullet points.
-    """
-    summary_lines = []
+    lines = []
 
     for guess, avg_time in results:
-        summary_lines.append(
-            f"- Guess `{guess}` average time: `{avg_time:.8f}` seconds"
-        )
+        lines.append(f"- Guess `{guess}` average time: `{avg_time:.8f}` seconds")
 
-    return "\n".join(summary_lines)
+    return "\n".join(lines)
 
 
 def timing_range_summary(results):
-    """
-    Creates a compact before/after timing summary.
-    """
     first_guess, first_time = results[0]
     last_guess, last_time = results[-1]
 
@@ -94,53 +76,144 @@ def create_security_report(
     fixed_leak,
     code_findings,
 ):
-    """
-    Generates a Markdown security report based on the agent's inspection,
-    timing measurements, mitigation, and retest.
-    """
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
-    report = f"""# Agentic Timing Side Channel Security Report
+    report_lines = [
+        "# Agentic Timing Side Channel Security Report",
+        "",
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
+        "## Project Overview",
+        "",
+        "This project demonstrates an agentic AI style workflow for detecting and mitigating a timing side-channel vulnerability in a password-checking function.",
+        "",
+        "The agent inspects source code, forms a hypothesis, runs timing measurements, analyzes the results, recommends a mitigation, retests the patched version, and produces this report.",
+        "",
+        "## Agent Workflow",
+        "",
+        "1. Inspect the vulnerable password-checking code.",
+        "2. Identify possible timing leak patterns.",
+        "3. Run timing measurements against the vulnerable function.",
+        "4. Analyze whether execution time increases as more prefix characters are correct.",
+        "5. Recommend a constant-time comparison mitigation.",
+        "6. Retest the patched function.",
+        "7. Generate final findings and result artifacts.",
+        "",
+        "## Source Code Inspection Findings",
+        "",
+    ]
 
-Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    for finding in code_findings:
+        report_lines.append(f"- {finding}")
 
-## Project Overview
+    report_lines.extend(
+        [
+            "",
+            "## Vulnerable Function Timing Results",
+            "",
+            summarize_results(vulnerable_results),
+            "",
+            "## Vulnerability Finding",
+            "",
+            f"Timing leakage detected: **{vulnerable_leak}**",
+            "",
+            "The vulnerable implementation leaks timing information because it returns as soon as it finds an incorrect character. This means guesses with more correct starting characters take longer to reject.",
+            "",
+            "### Vulnerable Timing Range Summary",
+            "",
+            timing_range_summary(vulnerable_results),
+            "",
+            "## Recommended Mitigation",
+            "",
+            "Replace early-return password comparison logic with a constant-time comparison method such as:",
+            "",
+            "```python",
+            "hmac.compare_digest(guess, SECRET_PASSWORD)",
+            "```",
+            "",
+            "This reduces timing leakage because the comparison avoids stopping immediately at the first incorrect character.",
+            "",
+            "## Patched Function Timing Results",
+            "",
+            summarize_results(fixed_results),
+            "",
+            "## Post-Mitigation Finding",
+            "",
+            f"Timing leakage still detected after patch: **{fixed_leak}**",
+            "",
+            "The patched version should show a much flatter timing pattern because it avoids returning immediately after the first incorrect character.",
+            "",
+            "### Patched Timing Range Summary",
+            "",
+            timing_range_summary(fixed_results),
+            "",
+            "## Final Conclusion",
+            "",
+            "The agent confirmed that the original password checker was vulnerable to a timing side channel. The root cause was early-return comparison logic. After applying a constant time comparison, the timing trend was reduced, making it harder to infer password characters from execution time.",
+            "",
+            "## Safety Note",
+            "",
+            "This project uses only local dummy code and a fake password. It does not target real accounts, real devices, networks, or external systems.",
+            "",
+        ]
+    )
 
-This project demonstrates an agentic AI style workflow for detecting and mitigating a timing side-channel vulnerability in a password-checking function.
+    report = "\n".join(report_lines)
 
-The agent inspects source code, forms a hypothesis, runs timing measurements, analyzes the results, recommends a mitigation, retests the patched version, and produces this report.
+    with open(REPORT_PATH, "w") as file:
+        file.write(report)
 
-## Agent Workflow
+    print(f"\nSecurity report saved to: {REPORT_PATH}")
 
-1. Inspect the vulnerable password-checking code.
-2. Identify possible timing leak patterns.
-3. Run timing measurements against the vulnerable function.
-4. Analyze whether execution time increases as more prefix characters are correct.
-5. Recommend a constant time comparison mitigation.
-6. Retest the patched function.
-7. Generate final findings and result artifacts.
 
-## Source Code Inspection Findings
+def main():
+    agent_log(1, "Reading vulnerable_app.py source code.")
+    source_code = read_source_file("vulnerable_app.py")
 
-{chr(10).join(f"- {finding}" for finding in code_findings)}
+    agent_log(2, "Inspecting code for timing side-channel indicators.")
+    code_findings = inspect_code_for_timing_leak(source_code)
 
-## Vulnerable Function Timing Results
+    for finding in code_findings:
+        print(f"- {finding}")
 
-{summarize_results(vulnerable_results)}
+    agent_log(
+        3,
+        "Forming hypothesis: early-return password comparison may leak timing information.",
+    )
 
-## Vulnerability Finding
+    agent_log(4, "Running timing measurements on the vulnerable function.")
+    vulnerable_results = analyze_prefix_timing(vulnerable_check_password)
+    vulnerable_leak = detect_leakage(vulnerable_results)
 
-Timing leakage detected: **{vulnerable_leak}**
+    agent_log(5, "Analyzing vulnerable timing results.")
+    print(f"Timing leakage detected in vulnerable function: {vulnerable_leak}")
 
-The vulnerable implementation leaks timing information because it returns as soon as it finds an incorrect character. This means guesses with more correct starting characters take longer to reject.
+    agent_log(
+        6,
+        "Selecting mitigation: replace early return comparison with constant-time comparison.",
+    )
 
-### Vulnerable Timing Range Summary
+    agent_log(7, "Running timing measurements on the patched function.")
+    fixed_results = analyze_prefix_timing(constant_time_check_password)
+    fixed_leak = detect_leakage(fixed_results)
 
-{timing_range_summary(vulnerable_results)}
+    agent_log(8, "Analyzing patched timing results.")
+    print(f"Timing leakage still detected after patch: {fixed_leak}")
 
-## Recommended Mitigation
+    agent_log(9, "Generating graphs, logs, and summary files.")
+    generate_results()
 
-Replace early return password comparison logic with a constant time comparison method such as:
+    agent_log(10, "Generating Markdown security report.")
+    create_security_report(
+        vulnerable_results,
+        fixed_results,
+        vulnerable_leak,
+        fixed_leak,
+        code_findings,
+    )
 
-```python
-hmac.compare_digest(guess, SECRET_PASSWORD)
+    agent_log(11, "Agentic timing side-channel analysis complete.")
+
+
+if __name__ == "__main__":
+    main()
