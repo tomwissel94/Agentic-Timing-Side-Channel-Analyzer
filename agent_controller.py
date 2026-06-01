@@ -54,6 +54,4 @@ analyze and improve software against timing side-channel vulnerabilities.
 if __name__ == "__main__":
     main()
 
-import results_generator
 
-results_generator.main()
