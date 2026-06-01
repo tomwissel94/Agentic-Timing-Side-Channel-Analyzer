@@ -1,0 +1,19 @@
+Agentic Timing Side Channel Analyzer
+========================================
+
+Finding #1: Vulnerable Function
+The vulnerable password checker shows increasing execution time as more password characters are correct.
+
+First timing: 0.00000065 seconds
+Last timing: 0.00883576 seconds
+Timing difference: 0.00883511 seconds
+
+Finding #2: Patched Function
+The constant-time comparison reduces the timing trend by avoiding early return behavior.
+
+First timing: 0.00000047 seconds
+Last timing: 0.00000023 seconds
+Timing difference: -0.00000024 seconds
+
+Conclusion
+The mitigation reduces the timing side channel and makes password prefix information harder to infer from execution time.
