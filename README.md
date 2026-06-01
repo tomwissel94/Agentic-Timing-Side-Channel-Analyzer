@@ -36,5 +36,8 @@ This project connects to ECE 202C topics including:
 
 ## How to Run
 
+Install the required Python package:
+
 ```bash
-python3 agent_controller.py
+pip3 install matplotlib
+python3 agent.py
